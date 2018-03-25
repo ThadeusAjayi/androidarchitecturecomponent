@@ -15,9 +15,10 @@
  */
 package com.example.android.sunshine.ui.list;
 
+import android.arch.lifecycle.LifecycleActivity;
+import android.arch.lifecycle.ViewModelProviders;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
@@ -25,6 +26,7 @@ import android.widget.ProgressBar;
 
 import com.example.android.sunshine.R;
 import com.example.android.sunshine.ui.detail.DetailActivity;
+import com.example.android.sunshine.utilities.InjectorUtils;
 
 import java.util.Date;
 
@@ -32,7 +34,7 @@ import java.util.Date;
 /**
  * Displays a list of the next 14 days of forecasts
  */
-public class MainActivity extends AppCompatActivity implements
+public class MainActivity extends LifecycleActivity implements
         ForecastAdapter.ForecastAdapterOnItemClickHandler {
 
     private ForecastAdapter mForecastAdapter;
@@ -40,11 +42,16 @@ public class MainActivity extends AppCompatActivity implements
     private int mPosition = RecyclerView.NO_POSITION;
     private ProgressBar mLoadingIndicator;
 
+    MainActivityViewModel mViewModel;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_forecast);
 
+
+        MainActivityFactory mainActivityFactory = InjectorUtils.provideMainActivityViewModelFactory(this);
+        mViewModel = ViewModelProviders.of(this, mainActivityFactory).get(MainActivityViewModel.class);
         /*
          * Using findViewById, we get a reference to our RecyclerView from xml. This allows us to
          * do things like set the adapter of the RecyclerView and toggle the visibility.
@@ -100,7 +107,18 @@ public class MainActivity extends AppCompatActivity implements
 
         /* Setting the adapter attaches it to the RecyclerView in our layout. */
         mRecyclerView.setAdapter(mForecastAdapter);
-        showLoading();
+
+        mViewModel.getCurrentWeather().observe(this, weatherEntries -> {
+            if (weatherEntries != null) {
+                mForecastAdapter.swapForecast(weatherEntries);
+                if (mPosition == RecyclerView.NO_POSITION) mPosition = 0;
+                mRecyclerView.smoothScrollToPosition(mPosition);
+                showWeatherDataView();
+            }
+            else {
+                showLoading();
+            }
+        });
 
     }
 
